@@ -1,0 +1,666 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0d6e50">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icone.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icone.svg"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Suivi Kilométrique Vélo</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@500;600;700&display=swap">
+<style>
+/* Layout: une colonne centrée de 960px, onglets en grille, tableau de bord en tuiles puis barres mensuelles à l'échelle. */
+:root {
+  --bg: #edf0ee;
+  --surface: #fbfcfb;
+  --ink: #15231f;
+  --muted: #586964;
+  --line: #d3dbd7;
+  --soft: #e4e9e6;
+  --accent: #0d6e50;
+  --on-accent: #ffffff;
+  --accent-soft: #d5ece2;
+  --good-bg: #d3eedf; --good-fg: #0b5a3d;
+  --warn-bg: #f6e6b8; --warn-fg: #6f4b00;
+  --bad-bg: #f6d4d1; --bad-fg: #8a1d18;
+  --neutral-bg: #e1e6e3; --neutral-fg: #41504b;
+  --font-display: "Barlow Condensed", "Arial Narrow", system-ui, sans-serif;
+  --font-body: "Barlow", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e1613; --surface: #16211d; --ink: #e6efeb; --muted: #93a49d; --line: #28372f; --soft: #1d2b26;
+    --accent: #3fc395; --on-accent: #06241a; --accent-soft: #163a2d;
+    --good-bg: #14382a; --good-fg: #7fe0b5;
+    --warn-bg: #3d3210; --warn-fg: #f0c860;
+    --bad-bg: #44201f; --bad-fg: #f5a29c;
+    --neutral-bg: #26332e; --neutral-fg: #b6c5be;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0e1613; --surface: #16211d; --ink: #e6efeb; --muted: #93a49d; --line: #28372f; --soft: #1d2b26;
+  --accent: #3fc395; --on-accent: #06241a; --accent-soft: #163a2d;
+  --good-bg: #14382a; --good-fg: #7fe0b5;
+  --warn-bg: #3d3210; --warn-fg: #f0c860;
+  --bad-bg: #44201f; --bad-fg: #f5a29c;
+  --neutral-bg: #26332e; --neutral-fg: #b6c5be;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--ink);
+  font-family: var(--font-body); font-size: 16px; line-height: 1.45;
+  padding-block: 20px 40px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.wrap { max-width: 960px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+h1, h2, h3 { font-family: var(--font-display); margin: 0; font-weight: 700; text-wrap: balance; }
+h1 { font-size: 2rem; line-height: 1.05; letter-spacing: .01em; }
+h2 { font-size: 1.4rem; }
+h3 { font-size: 1.1rem; }
+.top { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; }
+.top .tools { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.eyebrow { font-size: .75rem; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+
+.tabs { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; }
+.tabs button {
+  min-height: 44px; border: 1px solid var(--line); background: var(--surface); color: var(--muted);
+  border-radius: 10px; font: 600 .95rem var(--font-body); cursor: pointer; padding: 8px 12px;
+}
+.tabs button[aria-selected="true"] { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+button:focus-visible, input:focus-visible, select:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+.btn {
+  min-height: 44px; border: 1px solid var(--accent); background: var(--accent); color: var(--on-accent);
+  border-radius: 10px; padding: 8px 16px; font: 600 .95rem var(--font-body); cursor: pointer;
+}
+.btn.ghost { background: transparent; color: var(--accent); }
+.btn.small { min-height: 36px; padding: 4px 12px; font-size: .85rem; }
+.btn.danger { background: var(--bad-bg); color: var(--bad-fg); border-color: var(--bad-fg); }
+.btn:disabled { opacity: .5; cursor: default; }
+
+select, input {
+  min-height: 44px; border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px;
+  font: 500 1rem var(--font-body); background: var(--surface); color: var(--ink); max-width: 100%;
+}
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 16px; }
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+.stat .lab { font-size: .72rem; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+.stat .val { font-family: var(--font-display); font-weight: 700; font-size: 2.1rem; line-height: 1.1; color: var(--accent); font-variant-numeric: tabular-nums; }
+.stat .val small { font: 500 .85rem var(--font-body); color: var(--muted); }
+.stack { display: flex; flex-direction: column; gap: 12px; }
+
+.bars { display: flex; align-items: flex-end; gap: 6px; height: 190px; margin-top: 12px; border-bottom: 1px solid var(--line); }
+.barcol { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; }
+.barval { font-size: .7rem; color: var(--accent); font-weight: 600; font-variant-numeric: tabular-nums; height: 1.1em; }
+.barfill { width: 100%; background: var(--accent); border-radius: 4px 4px 0 0; min-height: 1px; }
+.barlabs { display: flex; gap: 6px; margin-top: 4px; }
+.barlabs span { flex: 1; min-width: 0; text-align: center; font-size: .7rem; color: var(--muted); }
+.hbar { display: grid; grid-template-columns: minmax(80px, 140px) 1fr auto; gap: 10px; align-items: center; font-size: .9rem; }
+.hbar .track { height: 12px; background: var(--soft); border-radius: 6px; overflow: hidden; }
+.hbar .fill { height: 100%; background: var(--accent); border-radius: 6px; }
+.hbar .name { overflow-wrap: anywhere; }
+.hbar .n { font-variant-numeric: tabular-nums; font-weight: 600; }
+
+form.ride { max-width: 520px; display: flex; flex-direction: column; gap: 12px; }
+label.f { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+label.f > span { font-size: .85rem; font-weight: 600; color: var(--muted); }
+label.f > input, label.f > select { width: 100%; }
+
+.scroll { overflow-x: auto; }
+table { width: 100%; min-width: 660px; border-collapse: collapse; font-size: .92rem; }
+th { text-align: left; font-size: .72rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); padding: 10px 8px; background: var(--soft); font-weight: 600; }
+td { padding: 10px 8px; border-top: 1px solid var(--line); vertical-align: middle; }
+td.km { font-family: var(--font-display); font-weight: 700; font-size: 1.15rem; color: var(--accent); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.badge { display: inline-block; border-radius: 999px; padding: 2px 10px; font-size: .78rem; font-weight: 600; white-space: nowrap; }
+.t-good { background: var(--good-bg); color: var(--good-fg); }
+.t-warn { background: var(--warn-bg); color: var(--warn-fg); }
+.t-bad { background: var(--bad-bg); color: var(--bad-fg); }
+.t-neutral { background: var(--neutral-bg); color: var(--neutral-fg); }
+td.acts { text-align: right; white-space: nowrap; }
+td.acts .btn + .btn { margin-left: 6px; }
+.empty { text-align: center; color: var(--muted); padding: 28px 12px; }
+
+.set-intro { color: var(--muted); font-size: .95rem; margin: 0; max-width: 62ch; }
+.setcard { display: flex; flex-direction: column; gap: 10px; }
+.ftitle-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.ftitle-row input { flex: 1 1 200px; font-weight: 600; }
+ul.items { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+li.item { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 8px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); }
+li.item .lbl { flex: 1 1 180px; min-width: 0; }
+li.item .used { font-size: .78rem; color: var(--muted); white-space: nowrap; }
+li.item .acts { display: flex; gap: 6px; margin-left: auto; }
+.icon-btn { min-width: 40px; min-height: 40px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); border-radius: 10px; cursor: pointer; font: 700 1rem var(--font-body); }
+.icon-btn:disabled { opacity: .35; cursor: default; }
+.addrow { display: flex; flex-wrap: wrap; gap: 8px; }
+.addrow input { flex: 1 1 200px; }
+
+.note { text-align: center; font-size: .8rem; color: var(--muted); margin: 0; }
+#toast {
+  position: fixed; left: 0; right: 0; bottom: 0; display: flex; justify-content: center; pointer-events: none;
+  padding: 0 max(16px, env(safe-area-inset-left, 0px)) calc(16px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-right, 0px));
+}
+#toast span { background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 10px; font-weight: 600; font-size: .9rem; opacity: 0; transition: opacity .2s; }
+#toast span.on { opacity: 1; }
+@media (prefers-reduced-motion: reduce) { #toast span { transition: none; } }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div>
+      <div class="eyebrow">Carnet de route</div>
+      <h1>Suivi Kilométrique Vélo</h1>
+    </div>
+    <div class="tools">
+      <select id="yearSel" aria-label="Année"></select>
+      <button class="btn" id="btnCsv" type="button" hidden>Exporter en CSV</button>
+    </div>
+  </header>
+
+  <nav class="tabs" role="tablist" aria-label="Sections">
+    <button role="tab" id="t-dash" data-tab="dash" type="button">Tableau de bord</button>
+    <button role="tab" id="t-saisie" data-tab="saisie" type="button">Nouvelle sortie</button>
+    <button role="tab" id="t-histo" data-tab="histo" type="button">Historique</button>
+    <button role="tab" id="t-reglages" data-tab="reglages" type="button">Réglages</button>
+  </nav>
+
+  <section id="dash" class="stack">
+    <div class="stats">
+      <div class="card stat"><div class="lab">Kilométrage annuel</div><div class="val" id="s-total">–</div></div>
+      <div class="card stat"><div class="lab">Sorties</div><div class="val" id="s-nb">–</div></div>
+      <div class="card stat"><div class="lab">Moyenne</div><div class="val" id="s-moy">–</div></div>
+      <div class="card stat"><div class="lab">Plus longue</div><div class="val" id="s-max">–</div></div>
+    </div>
+    <div class="card">
+      <div class="eyebrow">Distance par mois, en km</div>
+      <div class="bars" id="chart"></div>
+      <div class="barlabs" id="chartlabs"></div>
+    </div>
+    <div class="card stack">
+      <div class="eyebrow" id="byveloTitle">Distance par vélo</div>
+      <div class="stack" id="byvelo"></div>
+    </div>
+  </section>
+
+  <section id="saisie">
+    <form class="card ride" id="form">
+      <h2 id="formTitle">Enregistrer une sortie</h2>
+      <label class="f"><span>Date</span><input type="date" id="f-date" required></label>
+      <label class="f"><span>Distance (km)</span><input type="number" id="f-km" min="0" step="0.1" inputmode="decimal" placeholder="ex. 45" required></label>
+      <label class="f"><span id="l-type">Type de sortie</span><select id="f-type"></select></label>
+      <label class="f"><span id="l-region">Région</span><select id="f-region"></select></label>
+      <label class="f"><span id="l-velo">Vélo</span><select id="f-velo"></select></label>
+      <label class="f"><span id="l-appr">Appréciation</span><select id="f-appr"></select></label>
+      <button class="btn" type="submit" id="btnSubmit">Enregistrer la sortie</button>
+      <button class="btn ghost" type="button" id="btnCancel" hidden>Annuler la modification</button>
+      <p class="note" id="msg" role="status"></p>
+    </form>
+  </section>
+
+  <section id="histo">
+    <div class="card" style="padding:0">
+      <div style="padding:14px 16px">
+        <h2>Historique <span id="h-year"></span></h2>
+        <div class="note" style="text-align:left" id="h-sub"></div>
+      </div>
+      <div class="scroll">
+        <table>
+          <thead><tr><th>Date</th><th>Distance</th><th id="th-type">Type</th><th id="th-region">Région</th><th id="th-velo">Vélo</th><th id="th-appr">Appréciation</th><th></th></tr></thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section id="reglages" class="stack">
+    <div class="card stack">
+      <h2>Réglages</h2>
+      <p class="set-intro">Modifiez ici les intitulés des listes déroulantes : types de sortie, régions, vélos, appréciations. Renommer un élément met à jour toutes les sorties déjà enregistrées. Les changements sont sauvegardés automatiquement.</p>
+    </div>
+    <div class="stack" id="settings-body"></div>
+    <div class="card stack">
+      <h3>Remettre les listes d'origine</h3>
+      <p class="set-intro">Les sorties sont conservées. Les listes reviennent aux intitulés de départ.</p>
+      <div><button class="btn ghost small" type="button" id="btnReset">Remettre les listes d'origine</button></div>
+    </div>
+    <div class="card stack">
+      <h3>Sauvegarde et restauration</h3>
+      <p class="set-intro">Exportez toutes vos données (sorties et réglages) dans un fichier JSON. Gardez-le précieusement : il permet de restaurer vos sorties sur ce téléphone ou un autre appareil, ou de les récupérer si les données du navigateur sont effacées.</p>
+      <div class="addrow">
+        <button class="btn small" type="button" id="btnBackup">Sauvegarder mes données</button>
+        <button class="btn ghost small" type="button" id="btnRestore">Restaurer une sauvegarde</button>
+        <input type="file" id="fileRestore" accept="application/json,.json" hidden>
+      </div>
+      <p class="note" id="lastBackup" style="text-align:left"></p>
+    </div>
+  </section>
+
+  <p class="note" id="storeNote">Vos données sont enregistrées dans votre compte et se retrouvent sur tous vos appareils.</p>
+</div>
+<div id="toast" aria-live="polite"><span id="toastText"></span></div>
+
+<script>
+(function () {
+  var KEYS = ["type", "region", "velo", "appr"];
+  var TONES = [["neutral", "Neutre"], ["good", "Vert"], ["warn", "Ambre"], ["bad", "Rouge"]];
+  var MOIS = ["Janv.", "Févr.", "Mars", "Avril", "Mai", "Juin", "Juil.", "Août", "Sept.", "Oct.", "Nov.", "Déc."];
+  var LOCAL_KEY = "suivi-velo-v2";
+
+  var $ = function (id) { return document.getElementById(id); };
+  var esc = function (s) { return String(s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); };
+  var slug = function (s) { return s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "x"; };
+  var mk = function (arr) { return arr.map(function (l) { return { id: slug(l), label: l }; }); };
+  var newId = function () { return "i" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); };
+  var clone = function (o) { return JSON.parse(JSON.stringify(o)); };
+
+  function defaults() {
+    return {
+      fields: { type: "Type de sortie", region: "Région", velo: "Vélo", appr: "Appréciation" },
+      lists: {
+        type: mk(["solo", "club ESN", "accompagné", "voyage", "BRM"]),
+        region: mk(["Ouest", "Est", "Nord", "Sud", "Nord Ouest", "Nord Est", "Sud Ouest", "Sud Est"]),
+        velo: mk(["Singer", "Pinarello", "Lapierre", "Rondo"]),
+        appr: [
+          { id: "sans-difficulte", label: "Sans difficulté", tone: "good" },
+          { id: "difficulte-moyenne", label: "Difficulté moyenne", tone: "warn" },
+          { id: "difficulte-intense", label: "Difficulté intense", tone: "bad" }
+        ]
+      }
+    };
+  }
+  function normalize(data) {
+    var d = defaults();
+    data = data || {};
+    var out = { fields: Object.assign({}, d.fields, data.fields || {}), lists: {} };
+    KEYS.forEach(function (k) {
+      var l = data.lists && data.lists[k];
+      out.lists[k] = Array.isArray(l) && l.length ? l.filter(function (i) { return i && i.id && typeof i.label === "string"; }) : d.lists[k];
+    });
+    return out;
+  }
+
+  var S = {
+    rides: [], settings: defaults(), tab: "dash", year: new Date().getFullYear(),
+    editing: null, pendingDel: null, pendingRide: null, ready: false, localMode: false
+  };
+  var db = null;
+
+  /* ---------- stockage ---------- */
+  function localLoad() {
+    try {
+      var raw = JSON.parse(localStorage.getItem(LOCAL_KEY));
+      if (raw) { S.rides = raw.rides || []; S.settings = normalize(raw.settings); }
+    } catch (e) {}
+  }
+  function localSave() {
+    try { localStorage.setItem(LOCAL_KEY, JSON.stringify({ rides: S.rides, settings: S.settings })); } catch (e) {}
+  }
+  var toastTimer;
+  function toast(t) {
+    var el = $("toastText"); el.textContent = t; el.classList.add("on");
+    clearTimeout(toastTimer); toastTimer = setTimeout(function () { el.classList.remove("on"); }, 2400);
+  }
+  function writeError() { toast("Enregistrement impossible. Votre accès est peut-être en lecture seule."); }
+
+  async function saveRide(id, ride) {
+    if (db) { await db.doc("rides/" + id).set(ride); }
+    else {
+      var i = S.rides.findIndex(function (r) { return r.id === id; });
+      var full = Object.assign({ id: id }, ride);
+      if (i >= 0) S.rides[i] = full; else S.rides.push(full);
+      localSave(); renderAll();
+    }
+  }
+  async function deleteRide(id) {
+    if (db) { await db.doc("rides/" + id).delete(); }
+    else { S.rides = S.rides.filter(function (r) { return r.id !== id; }); localSave(); renderAll(); }
+  }
+
+  var settingsDirty = false, settingsTimer = null, settingsSaving = false, settingsAgain = false;
+  function queueSettingsSave() {
+    settingsDirty = true;
+    clearTimeout(settingsTimer);
+    settingsTimer = setTimeout(flushSettings, 500);
+  }
+  async function flushSettings() {
+    if (settingsSaving) { settingsAgain = true; return; }
+    settingsSaving = true;
+    try {
+      if (db) await db.doc("settings/main").set(clone(S.settings)); else localSave();
+    } catch (e) { writeError(); }
+    settingsSaving = false;
+    if (settingsAgain) { settingsAgain = false; flushSettings(); return; }
+    settingsDirty = false;
+  }
+
+  /* ---------- aides ---------- */
+  function labelOf(k, id) {
+    var it = S.settings.lists[k].find(function (i) { return i.id === id; });
+    return it ? it.label : "—";
+  }
+  function toneOf(id) {
+    var it = S.settings.lists.appr.find(function (i) { return i.id === id; });
+    return it && it.tone ? it.tone : "neutral";
+  }
+  function yearRides() {
+    return S.rides.filter(function (r) { return r.date && Number(r.date.slice(0, 4)) === S.year; })
+      .sort(function (a, b) { return a.date.localeCompare(b.date); });
+  }
+  var fr = function (n) { return Number(n).toLocaleString("fr-FR", { maximumFractionDigits: 1 }); };
+
+  /* ---------- rendu ---------- */
+  function renderHeader() {
+    var ys = Array.from(new Set(S.rides.map(function (r) { return (r.date || "").slice(0, 4); }).filter(Boolean)));
+    if (ys.indexOf(String(S.year)) < 0) ys.push(String(S.year));
+    $("yearSel").innerHTML = ys.sort().map(function (y) { return '<option value="' + y + '"' + (Number(y) === S.year ? " selected" : "") + ">" + y + "</option>"; }).join("");
+    ["dash", "saisie", "histo", "reglages"].forEach(function (t) {
+      $(t).hidden = t !== S.tab;
+      $("t-" + t).setAttribute("aria-selected", t === S.tab ? "true" : "false");
+    });
+  }
+
+  function renderDash() {
+    var yr = yearRides();
+    var total = yr.reduce(function (s, r) { return s + Number(r.km); }, 0);
+    if (!S.ready) {
+      ["s-total", "s-nb", "s-moy", "s-max"].forEach(function (id) { $(id).textContent = "–"; });
+    } else {
+      $("s-total").innerHTML = fr(total) + " <small>km</small>";
+      $("s-nb").textContent = yr.length;
+      $("s-moy").innerHTML = (yr.length ? fr(total / yr.length) : "0") + " <small>km/sortie</small>";
+      $("s-max").innerHTML = fr(yr.reduce(function (m, r) { return Math.max(m, Number(r.km)); }, 0)) + " <small>km</small>";
+    }
+    var byMonth = MOIS.map(function (m, i) {
+      return yr.filter(function (r) { return Number(r.date.slice(5, 7)) === i + 1; }).reduce(function (s, r) { return s + Number(r.km); }, 0);
+    });
+    var max = Math.max.apply(null, byMonth.concat([1]));
+    $("chart").innerHTML = byMonth.map(function (v) {
+      return '<div class="barcol"><div class="barval">' + (v ? fr(v) : "") + '</div><div class="barfill" style="height:' + Math.round(v / max * 140) + 'px"></div></div>';
+    }).join("");
+    $("chartlabs").innerHTML = MOIS.map(function (m) { return "<span>" + m + "</span>"; }).join("");
+
+    $("byveloTitle").textContent = "Distance par " + S.settings.fields.velo.toLowerCase();
+    var items = S.settings.lists.velo.map(function (it) {
+      return { label: it.label, km: yr.filter(function (r) { return r.velo === it.id; }).reduce(function (s, r) { return s + Number(r.km); }, 0) };
+    });
+    var other = yr.filter(function (r) { return !S.settings.lists.velo.some(function (i) { return i.id === r.velo; }); }).reduce(function (s, r) { return s + Number(r.km); }, 0);
+    if (other) items.push({ label: "—", km: other });
+    var vmax = Math.max.apply(null, items.map(function (i) { return i.km; }).concat([1]));
+    $("byvelo").innerHTML = items.map(function (i) {
+      return '<div class="hbar"><span class="name">' + esc(i.label) + '</span><span class="track"><span class="fill" style="display:block;width:' + Math.round(i.km / vmax * 100) + '%"></span></span><span class="n">' + fr(i.km) + " km</span></div>";
+    }).join("");
+  }
+
+  function fillSelects() {
+    KEYS.forEach(function (k) {
+      var el = $("f-" + k), cur = el.value;
+      el.innerHTML = S.settings.lists[k].map(function (i) { return '<option value="' + esc(i.id) + '">' + esc(i.label) + "</option>"; }).join("");
+      if (Array.prototype.some.call(el.options, function (o) { return o.value === cur; })) el.value = cur;
+      $("l-" + k).textContent = S.settings.fields[k];
+      $("th-" + k).textContent = S.settings.fields[k];
+    });
+  }
+
+  function renderForm() {
+    fillSelects();
+    var ed = !!S.editing;
+    $("formTitle").textContent = ed ? "Modifier la sortie" : "Enregistrer une sortie";
+    $("btnSubmit").textContent = ed ? "Mettre à jour la sortie" : "Enregistrer la sortie";
+    $("btnCancel").hidden = !ed;
+  }
+
+  function renderHisto() {
+    var yr = yearRides();
+    var total = yr.reduce(function (s, r) { return s + Number(r.km); }, 0);
+    $("h-year").textContent = S.year;
+    $("h-sub").textContent = yr.length + " sortie" + (yr.length > 1 ? "s" : "") + " · " + fr(total) + " km";
+    if (!yr.length) {
+      $("tbody").innerHTML = '<tr><td colspan="7" class="empty">' + (S.ready ? "Aucune sortie enregistrée pour " + S.year + "." : "Chargement…") + "</td></tr>";
+      return;
+    }
+    $("tbody").innerHTML = yr.map(function (r) {
+      var d = new Date(r.date + "T00:00:00").toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "numeric" });
+      var confirm = S.pendingRide === r.id;
+      return "<tr><td>" + d + '</td><td class="km">' + fr(r.km) + " km</td><td>" + esc(labelOf("type", r.type)) + "</td><td>" + esc(labelOf("region", r.region)) + "</td><td>" + esc(labelOf("velo", r.velo)) +
+        '</td><td><span class="badge t-' + toneOf(r.appr) + '">' + esc(labelOf("appr", r.appr)) + '</span></td><td class="acts">' +
+        '<button class="btn ghost small" type="button" data-act="edit" data-id="' + esc(r.id) + '">Modifier</button>' +
+        (confirm
+          ? '<button class="btn danger small" type="button" data-act="delok" data-id="' + esc(r.id) + '">Confirmer</button><button class="btn ghost small" type="button" data-act="delno">Non</button>'
+          : '<button class="btn ghost small" type="button" data-act="del" data-id="' + esc(r.id) + '">Supprimer</button>') +
+        "</td></tr>";
+    }).join("");
+  }
+
+  function renderSettings() {
+    var s = S.settings;
+    $("settings-body").innerHTML = KEYS.map(function (k) {
+      var list = s.lists[k];
+      var rows = list.map(function (it, i) {
+        var used = S.rides.filter(function (r) { return r[k] === it.id; }).length;
+        var key = k + ":" + it.id;
+        var pending = S.pendingDel === key;
+        var tone = k === "appr"
+          ? '<select class="tone" data-k="' + k + '" data-id="' + esc(it.id) + '" aria-label="Couleur">' + TONES.map(function (t) { return '<option value="' + t[0] + '"' + ((it.tone || "neutral") === t[0] ? " selected" : "") + ">" + t[1] + "</option>"; }).join("") + "</select>"
+          : "";
+        return '<li class="item"><input class="lbl" data-k="' + k + '" data-id="' + esc(it.id) + '" value="' + esc(it.label) + '" aria-label="Intitulé">' + tone +
+          '<span class="used">' + used + " sortie" + (used > 1 ? "s" : "") + '</span><div class="acts">' +
+          '<button class="icon-btn" type="button" data-act="up" data-k="' + k + '" data-id="' + esc(it.id) + '" aria-label="Monter"' + (i === 0 ? " disabled" : "") + ">↑</button>" +
+          '<button class="icon-btn" type="button" data-act="down" data-k="' + k + '" data-id="' + esc(it.id) + '" aria-label="Descendre"' + (i === list.length - 1 ? " disabled" : "") + ">↓</button>" +
+          (pending
+            ? '<button class="btn danger small" type="button" data-act="rmok" data-k="' + k + '" data-id="' + esc(it.id) + '">Supprimer</button><button class="btn ghost small" type="button" data-act="rmno">Non</button>'
+            : '<button class="icon-btn" type="button" data-act="rm" data-k="' + k + '" data-id="' + esc(it.id) + '" aria-label="Retirer"' + (list.length === 1 ? " disabled" : "") + ">✕</button>") +
+          "</div></li>";
+      }).join("");
+      return '<div class="card setcard"><div class="ftitle-row"><span class="eyebrow">Nom du champ</span><input class="ftitle" data-k="' + k + '" value="' + esc(s.fields[k]) + '" aria-label="Nom du champ"></div>' +
+        '<ul class="items">' + rows + '</ul><div class="addrow"><input id="add-' + k + '" placeholder="Nouvel élément" aria-label="Nouvel élément"><button class="btn small" type="button" data-act="add" data-k="' + k + '">Ajouter</button></div></div>';
+    }).join("");
+  }
+
+  function settingsFocused() {
+    var a = document.activeElement;
+    return !!(a && a.closest && a.closest("#settings-body") && a.tagName === "INPUT");
+  }
+  function renderAll() {
+    renderHeader(); renderDash(); renderForm(); renderHisto();
+    if (S.tab === "reglages" && !settingsFocused()) renderSettings();
+  }
+
+  /* ---------- événements ---------- */
+  document.querySelector(".tabs").addEventListener("click", function (e) {
+    var b = e.target.closest("[data-tab]"); if (!b) return;
+    S.tab = b.dataset.tab; S.pendingDel = null; S.pendingRide = null;
+    renderAll(); if (S.tab === "reglages") renderSettings();
+  });
+  $("yearSel").addEventListener("change", function (e) { S.year = Number(e.target.value); renderAll(); });
+
+  $("form").addEventListener("submit", async function (e) {
+    e.preventDefault();
+    var date = $("f-date").value, km = Number($("f-km").value);
+    if (!date || !(km > 0)) { $("msg").textContent = "Renseignez une date et une distance valide."; return; }
+    var ride = { date: date, km: km, type: $("f-type").value, region: $("f-region").value, velo: $("f-velo").value, appr: $("f-appr").value };
+    var wasEditing = !!S.editing;
+    var id = S.editing || newId();
+    try { await saveRide(id, ride); } catch (err) { writeError(); return; }
+    S.year = Number(date.slice(0, 4)); S.editing = null;
+    $("f-date").value = ""; $("f-km").value = "";
+    $("msg").textContent = "";
+    toast(wasEditing ? "Sortie mise à jour" : "Sortie enregistrée");
+    if (wasEditing) S.tab = "histo";
+    renderAll();
+  });
+  $("btnCancel").addEventListener("click", function () {
+    S.editing = null; $("f-date").value = ""; $("f-km").value = ""; S.tab = "histo"; renderAll();
+  });
+
+  $("tbody").addEventListener("click", async function (e) {
+    var b = e.target.closest("[data-act]"); if (!b) return;
+    var act = b.dataset.act, id = b.dataset.id;
+    if (act === "edit") {
+      var r = S.rides.find(function (x) { return x.id === id; }); if (!r) return;
+      S.editing = id; S.tab = "saisie"; renderAll();
+      $("f-date").value = r.date; $("f-km").value = r.km;
+      KEYS.forEach(function (k) { $("f-" + k).value = r[k]; });
+    } else if (act === "del") { S.pendingRide = id; renderHisto(); }
+    else if (act === "delno") { S.pendingRide = null; renderHisto(); }
+    else if (act === "delok") {
+      S.pendingRide = null;
+      try { await deleteRide(id); toast("Sortie supprimée"); } catch (err) { writeError(); }
+      renderAll();
+    }
+  });
+
+  var sb = $("settings-body");
+  sb.addEventListener("input", function (e) {
+    var t = e.target;
+    if (t.classList.contains("lbl")) {
+      var it = S.settings.lists[t.dataset.k].find(function (i) { return i.id === t.dataset.id; });
+      if (it) { it.label = t.value; queueSettingsSave(); }
+    } else if (t.classList.contains("ftitle")) {
+      S.settings.fields[t.dataset.k] = t.value; queueSettingsSave();
+    }
+  });
+  sb.addEventListener("change", function (e) {
+    var t = e.target;
+    if (t.classList.contains("tone")) {
+      var it = S.settings.lists.appr.find(function (i) { return i.id === t.dataset.id; });
+      if (it) { it.tone = t.value; queueSettingsSave(); }
+    }
+  });
+  function addItem(k) {
+    var inp = $("add-" + k), v = inp.value.trim(); if (!v) return;
+    var dup = S.settings.lists[k].some(function (i) { return i.label.toLowerCase() === v.toLowerCase(); });
+    if (dup) { toast("Cet élément existe déjà."); return; }
+    var it = { id: newId(), label: v }; if (k === "appr") it.tone = "neutral";
+    S.settings.lists[k].push(it); queueSettingsSave(); renderSettings();
+    $("add-" + k).focus();
+  }
+  sb.addEventListener("keydown", function (e) {
+    if (e.key === "Enter" && e.target.id && e.target.id.indexOf("add-") === 0) { e.preventDefault(); addItem(e.target.id.slice(4)); }
+  });
+  sb.addEventListener("click", function (e) {
+    var b = e.target.closest("[data-act]"); if (!b) return;
+    var act = b.dataset.act, k = b.dataset.k, id = b.dataset.id;
+    var list = k ? S.settings.lists[k] : null;
+    if (act === "add") return addItem(k);
+    if (act === "up" || act === "down") {
+      var i = list.findIndex(function (x) { return x.id === id; }), j = act === "up" ? i - 1 : i + 1;
+      if (i < 0 || j < 0 || j >= list.length) return;
+      var tmp = list[i]; list[i] = list[j]; list[j] = tmp; queueSettingsSave(); renderSettings();
+    } else if (act === "rm") { S.pendingDel = k + ":" + id; renderSettings(); }
+    else if (act === "rmno") { S.pendingDel = null; renderSettings(); }
+    else if (act === "rmok") {
+      S.settings.lists[k] = list.filter(function (x) { return x.id !== id; });
+      S.pendingDel = null; queueSettingsSave(); renderSettings();
+    }
+  });
+  var resetArmed = false;
+  $("btnReset").addEventListener("click", function () {
+    var b = $("btnReset");
+    if (!resetArmed) { resetArmed = true; b.textContent = "Confirmer la remise à zéro des listes"; setTimeout(function () { resetArmed = false; b.textContent = "Remettre les listes d'origine"; }, 4000); return; }
+    resetArmed = false; b.textContent = "Remettre les listes d'origine";
+    S.settings = defaults(); queueSettingsSave(); renderAll(); renderSettings(); toast("Listes d'origine rétablies");
+  });
+
+  $("btnCsv").addEventListener("click", async function () {
+    var dl = await claude.use("downloads").catch(function () { return null; });
+    if (!dl) { toast("Export indisponible dans cette vue."); return; }
+    var q = function (v) { return '"' + String(v).replace(/"/g, '""') + '"'; };
+    var f = S.settings.fields;
+    var head = ["Date", "Distance (km)", f.type, f.region, f.velo, f.appr].map(q).join(";");
+    var rows = yearRides().map(function (r) {
+      return [r.date, String(r.km).replace(".", ","), labelOf("type", r.type), labelOf("region", r.region), labelOf("velo", r.velo), labelOf("appr", r.appr)].map(q).join(";");
+    });
+    try { await dl.save({ filename: "suivi-km-velo-" + S.year + ".csv", data: "﻿" + head + "\n" + rows.join("\n") }); }
+    catch (err) { if (!err || err.code !== "declined") toast("Export impossible."); }
+  });
+
+  /* ---------- sauvegarde / restauration ---------- */
+  function telechargerFichier(nom, texte) {
+    var blob = new Blob([texte], { type: "application/json" });
+    var a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = nom;
+    document.body.appendChild(a); a.click();
+    setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+  }
+  function noteBackup() {
+    var d = localStorage.getItem(LOCAL_KEY + "-backup");
+    if (d) $("lastBackup").textContent = "Dernière sauvegarde téléchargée : " + new Date(Number(d)).toLocaleDateString("fr-FR", { day: "2-digit", month: "long", year: "numeric" });
+  }
+  $("btnBackup").addEventListener("click", function () {
+    try {
+      var donnees = { app: "suivi-velo", version: 2, date: new Date().toISOString(), rides: S.rides, settings: S.settings };
+      var jour = new Date().toISOString().slice(0, 10);
+      telechargerFichier("suivi-velo-sauvegarde-" + jour + ".json", JSON.stringify(donnees, null, 2));
+      localStorage.setItem(LOCAL_KEY + "-backup", String(Date.now()));
+      noteBackup();
+      toast("Sauvegarde téléchargée (" + S.rides.length + " sorties)");
+    } catch (e) { toast("Sauvegarde impossible."); }
+  });
+  $("btnRestore").addEventListener("click", function () {
+    if (!window.confirm("La restauration remplace toutes les sorties et réglages actuels par le contenu du fichier. Continuer ?")) return;
+    $("fileRestore").click();
+  });
+  $("fileRestore").addEventListener("change", function (e) {
+    var f = e.target.files && e.target.files[0]; if (!f) return;
+    var reader = new FileReader();
+    reader.onload = function () {
+      try {
+        var data = JSON.parse(reader.result);
+        if (!data || !Array.isArray(data.rides)) throw new Error("format invalide");
+        S.rides = data.rides.filter(function (r) { return r && r.id && r.date && Number(r.km) > 0; });
+        S.settings = normalize(data.settings || {});
+        S.year = new Date().getFullYear();
+        localSave();
+        if (db) {
+          S.rides.forEach(function (r) { db.doc("rides/" + r.id).set(r).catch(function () {}); });
+          db.doc("settings/main").set(clone(S.settings)).catch(function () {});
+        }
+        renderAll(); renderSettings();
+        toast("Sauvegarde restaurée : " + S.rides.length + " sortie" + (S.rides.length > 1 ? "s" : ""));
+      } catch (err) { toast("Fichier de sauvegarde invalide."); }
+    };
+    reader.readAsText(f);
+    e.target.value = "";
+  });
+
+  /* ---------- démarrage ---------- */
+  renderAll();
+  var today = new Date(); $("f-date").value = "";
+  (async function init() {
+    try { db = await claude.use("db"); } catch (e) { db = null; }
+    if (db) {
+      db.collection("rides").onSnapshot(function (snap) {
+        S.rides = snap.docs.map(function (d) { return Object.assign({ id: d.id }, d.data()); });
+        S.ready = true; renderAll();
+      }, function () { S.ready = true; renderAll(); });
+      db.doc("settings/main").onSnapshot(function (snap) {
+        if (settingsDirty || snap.metadata.hasPendingWrites) return;
+        var next = snap.exists ? normalize(snap.data()) : defaults();
+        if (JSON.stringify(next) === JSON.stringify(S.settings)) return;
+        S.settings = next; renderAll();
+      }, function () {});
+    } else {
+      S.localMode = true; localLoad(); S.ready = true;
+      $("storeNote").textContent = "Vos sorties sont enregistrées dans ce navigateur uniquement. Utilisez l'export CSV pour les sauvegarder.";
+      renderAll();
+    }
+    try { var dl = await claude.use("downloads"); $("btnCsv").hidden = !dl; } catch (e) {}
+    if (S.localMode) noteBackup();
+  })();
+})();
+</script>
+<script>
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", function () {
+    navigator.serviceWorker.register("sw.js").catch(function (e) {
+      console.warn("Service worker non enregistré :", e);
+    });
+  });
+}
+</script>
+
+</body></html>

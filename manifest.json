@@ -1,0 +1,16 @@
+{
+  "name": "Suivi Kilométrique Vélo",
+  "short_name": "Suivi Vélo",
+  "description": "Carnet de route : kilométrage et sorties vélo.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#edf0ee",
+  "theme_color": "#0d6e50",
+  "lang": "fr",
+  "icons": [
+    { "src": "icone.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "icone.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+  ]
+}
